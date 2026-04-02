@@ -1,19 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites>
-  <testsuite name="AuthTests" tests="4" failures="0" time="0.500">
-    <testcase name="should login" classname="AuthTests" time="0.120"/>
-    <testcase name="should logout" classname="AuthTests" time="0.045"/>
-    <testcase name="should register" classname="AuthTests" time="0.200"/>
-    <testcase name="should reset password" classname="AuthTests" time="0.135"/>
-  </testsuite>
-  <testsuite name="DbTests" tests="3" failures="0" time="0.300">
-    <testcase name="should connect" classname="DbTests" time="0.080"/>
-    <testcase name="should query" classname="DbTests" time="0.120"/>
-    <testcase name="should insert" classname="DbTests" time="0.100"/>
-  </testsuite>
-  <testsuite name="ApiTests" tests="3" failures="0" time="0.250">
-    <testcase name="should return 200" classname="ApiTests" time="0.090"/>
-    <testcase name="should validate input" classname="ApiTests" time="0.075"/>
-    <testcase name="should rate limit" classname="ApiTests" time="0.085"/>
-  </testsuite>
-</testsuites>
+<testsuite name="UnitSuite" tests="1" failures="0" time="0.123">
+  <testcase name="adds numbers" classname="UnitSuite" time="0.123" />
+</testsuite>

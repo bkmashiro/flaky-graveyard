@@ -38,7 +38,7 @@ export function calculateScore(
   project: string,
   window = 30
 ): FlakinessScore {
-  const history = getTestHistory(db, testName, project, window)
+  const history = getTestHistory(db, testName, suite, project, window)
   const failCount = history.filter((h) => h.status === 'fail').length
   const totalRuns = history.length
   const score = totalRuns > 0 ? failCount / totalRuns : 0

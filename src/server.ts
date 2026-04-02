@@ -1,7 +1,7 @@
 import express from 'express'
 import { getDb, insertRun, insertTestResult, getProjectStats } from './db.js'
 import { parseJUnitXml } from './ingest.js'
-import { getTopFlaky, calculateScore } from './scorer.js'
+import { getTopFlaky } from './scorer.js'
 
 const app = express()
 app.use(express.json({ limit: '10mb' }))

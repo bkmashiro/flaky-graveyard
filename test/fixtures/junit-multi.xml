@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="AuthSuite" tests="2" failures="1" time="0.700">
+    <testcase name="logs in" classname="AuthSuite" time="0.200" />
+    <testcase name="rejects bad password" classname="AuthSuite" time="0.500">
+      <failure message="Expected 401">AssertionError: Expected 401</failure>
+    </testcase>
+  </testsuite>
+  <testsuite name="EmptySuite" tests="0" failures="0" time="0.000" />
+  <testsuite name="ApiSuite" tests="1" failures="0" time="0.050">
+    <testcase name="returns healthcheck" classname="ApiSuite" time="0.050" />
+  </testsuite>
+</testsuites>

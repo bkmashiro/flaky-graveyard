@@ -28,6 +28,11 @@ CREATE INDEX IF NOT EXISTS idx_test_name ON test_results(test_name);
 CREATE INDEX IF NOT EXISTS idx_run_project ON runs(project);
 `
 
+export function initDb(db: Database.Database): Database.Database {
+  db.exec(SCHEMA)
+  return db
+}
+
 export function getDb(dbPath?: string): Database.Database {
   if (_db) return _db
 
@@ -37,8 +42,7 @@ export function getDb(dbPath?: string): Database.Database {
     `${homedir()}/.flaky-graveyard/data.db`
 
   mkdirSync(dirname(resolvedPath), { recursive: true })
-  _db = new Database(resolvedPath)
-  _db.exec(SCHEMA)
+  _db = initDb(new Database(resolvedPath))
   return _db
 }
 
@@ -86,6 +90,7 @@ export interface HistoryEntry {
 export function getTestHistory(
   db: Database.Database,
   testName: string,
+  suite: string,
   project: string,
   window: number
 ): HistoryEntry[] {
@@ -93,11 +98,11 @@ export function getTestHistory(
     SELECT tr.status, r.run_at
     FROM test_results tr
     JOIN runs r ON tr.run_id = r.id
-    WHERE tr.test_name = ? AND r.project = ?
+    WHERE tr.test_name = ? AND COALESCE(tr.suite, '') = ? AND r.project = ?
     ORDER BY r.run_at DESC
     LIMIT ?
   `)
-  return stmt.all(testName, project, window) as HistoryEntry[]
+  return stmt.all(testName, suite, project, window) as HistoryEntry[]
 }
 
 export interface ProjectStats {

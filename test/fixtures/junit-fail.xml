@@ -1,28 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites>
-  <testsuite name="AuthTests" tests="4" failures="1" time="0.600">
-    <testcase name="should login" classname="AuthTests" time="0.250">
-      <failure message="Expected status 200 got 500">AssertionError: Expected status 200 got 500
-    at AuthTests.shouldLogin (auth.test.ts:15:3)</failure>
-    </testcase>
-    <testcase name="should logout" classname="AuthTests" time="0.045"/>
-    <testcase name="should register" classname="AuthTests" time="0.200"/>
-    <testcase name="should reset password" classname="AuthTests" time="0.105"/>
-  </testsuite>
-  <testsuite name="DbTests" tests="3" failures="1" time="0.500">
-    <testcase name="should connect" classname="DbTests" time="0.300">
-      <failure message="Connection timeout after 5000ms">Error: Connection timeout after 5000ms
-    at DbTests.shouldConnect (db.test.ts:22:5)</failure>
-    </testcase>
-    <testcase name="should query" classname="DbTests" time="0.120"/>
-    <testcase name="should insert" classname="DbTests" time="0.080"/>
-  </testsuite>
-  <testsuite name="ApiTests" tests="3" failures="1" time="0.300">
-    <testcase name="should return 200" classname="ApiTests" time="0.090"/>
-    <testcase name="should validate input" classname="ApiTests" time="0.075"/>
-    <testcase name="should rate limit" classname="ApiTests" time="0.135">
-      <failure message="Expected 429 got 200">AssertionError: Expected 429 got 200
-    at ApiTests.shouldRateLimit (api.test.ts:45:5)</failure>
-    </testcase>
-  </testsuite>
-</testsuites>
+<testsuite name="UnitSuite" tests="1" failures="1" time="0.456">
+  <testcase name="rejects invalid input" classname="UnitSuite" time="0.456">
+    <failure message="Expected validation error">AssertionError: Expected validation error</failure>
+  </testcase>
+</testsuite>
