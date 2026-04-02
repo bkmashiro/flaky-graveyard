@@ -1,6 +1,6 @@
 {
   "name": "flaky-graveyard",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Track and bury your flaky tests - CI dashboard for flakiness analysis",
   "main": "dist/server.js",
   "bin": {
