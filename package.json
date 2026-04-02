@@ -1,18 +1,27 @@
 {
   "name": "flaky-graveyard",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Track and bury your flaky tests - CI dashboard for flakiness analysis",
   "main": "dist/server.js",
   "bin": {
-    "flaky-graveyard": "./dist/cli.js"
+    "flaky-graveyard": "dist/cli.js"
   },
-  "files": ["dist/", "README.md"],
+  "files": [
+    "dist/",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build",
     "start": "node dist/server.js"
   },
-  "keywords": ["testing", "flaky-tests", "ci", "dashboard", "devtools"],
+  "keywords": [
+    "testing",
+    "flaky-tests",
+    "ci",
+    "dashboard",
+    "devtools"
+  ],
   "author": "bkmsr",
   "license": "MIT",
   "packageManager": "pnpm@10.30.3",
