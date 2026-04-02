@@ -1,0 +1,6 @@
+services:
+  flaky-graveyard:
+    build: .
+    ports: ["3000:3000"]
+    volumes: ["./data:/root/.flaky-graveyard"]
+    restart: unless-stopped

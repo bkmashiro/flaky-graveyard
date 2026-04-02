@@ -1,13 +1,20 @@
 #!/usr/bin/env node
 import { Command } from 'commander'
 import { readFileSync } from 'fs'
+import { resolve } from 'path'
 import chalk from 'chalk'
 import { getDb, insertRun, insertTestResult, getProjectStats } from './db.js'
 import { parseJUnitXml } from './ingest.js'
 import { getTopFlaky } from './scorer.js'
 
+const packageJson = JSON.parse(
+  readFileSync(resolve(__dirname, '../package.json'), 'utf-8')
+) as { version?: string }
 const program = new Command()
-program.name('flaky-graveyard').description('Self-hosted flaky test tracker').version('1.0.0')
+program
+  .name('flaky-graveyard')
+  .description('Self-hosted flaky test tracker')
+  .version(packageJson.version ?? '0.0.0')
 
 // Upload command
 program

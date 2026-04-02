@@ -8,23 +8,36 @@ app.use(express.json({ limit: '10mb' }))
 
 const PORT = parseInt(process.env.PORT ?? '3000', 10)
 
-app.post('/api/runs', (req, res) => {
+function handleIngest(req: express.Request, res: express.Response) {
   try {
-    const { project, branch, commitSha, junitXml } = req.body as {
+    const { project, branch, commitSha, junitXml, junitXmlFiles } = req.body as {
       project?: string
       branch?: string
       commitSha?: string
       junitXml?: string
+      junitXmlFiles?: string[]
     }
 
-    if (!project || !junitXml) {
-      res.status(400).json({ error: 'project and junitXml are required' })
+    const xmlPayloads = [
+      ...(typeof junitXml === 'string' && junitXml.length > 0 ? [junitXml] : []),
+      ...(Array.isArray(junitXmlFiles)
+        ? junitXmlFiles.filter(
+            (value): value is string =>
+              typeof value === 'string' && value.length > 0
+          )
+        : []),
+    ]
+
+    if (!project || xmlPayloads.length === 0) {
+      res
+        .status(400)
+        .json({ error: 'project and junitXml or junitXmlFiles are required' })
       return
     }
 
     const db = getDb()
     const runId = insertRun(db, project, branch, commitSha)
-    const results = parseJUnitXml(junitXml)
+    const results = xmlPayloads.flatMap((xml) => parseJUnitXml(xml))
 
     let pass = 0, fail = 0, skip = 0
     for (const r of results) {
@@ -34,11 +47,18 @@ app.post('/api/runs', (req, res) => {
       else skip++
     }
 
-    res.json({ runId, stats: { total: results.length, pass, fail, skip } })
+    res.json({
+      runId,
+      filesProcessed: xmlPayloads.length,
+      stats: { total: results.length, pass, fail, skip },
+    })
   } catch (err) {
     res.status(500).json({ error: String(err) })
   }
-})
+}
+
+app.post('/api/runs', handleIngest)
+app.post('/api/ingest', handleIngest)
 
 app.get('/api/flaky', (req, res) => {
   try {

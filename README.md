@@ -1,6 +1,6 @@
 # 🪦 Flaky Graveyard
 
-A self-hosted flaky test tracker that ingests JUnit XML reports, scores test flakiness, and provides a web dashboard and CLI for visibility into unstable tests.
+A self-hosted flaky test tracker that ingests JUnit XML reports, scores test flakiness, and provides a web dashboard, CLI, GitHub Action, and Docker deployment path for unstable test visibility.
 
 ## What is it?
 
@@ -10,7 +10,7 @@ Flaky Graveyard collects test results from your CI runs, calculates a flakiness 
 
 - **Privacy**: Your test failures stay on your own infrastructure, never sent to a third party.
 - **Cost**: No SaaS pricing per seat or per test run. Run it on a $5 VPS.
-- **Customization**: Open source — fork it, extend it, integrate it however you like.
+- **Customization**: Open source; fork it, extend it, integrate it however you like.
 - **Simplicity**: One SQLite database, one Node process, one CLI.
 
 ## Quick Start
@@ -18,77 +18,89 @@ Flaky Graveyard collects test results from your CI runs, calculates a flakiness 
 ### Direct with Node
 
 ```bash
-# Install dependencies
 pnpm install
-
-# Start the server
+pnpm build
 pnpm start
 # => Flaky Graveyard server running on http://localhost:3000
+```
 
-# Upload a test report
-pnpm cli upload --project myapp --branch main test-results.xml
+Upload a test report:
 
-# View the dashboard
+```bash
+flaky-graveyard upload --project myapp --branch main --commit abc123 results.xml
+```
+
+Open the dashboard:
+
+```bash
 open http://localhost:3000/dashboard?project=myapp
 ```
 
 ### Docker Compose
 
-```yaml
-version: '3.8'
-services:
-  flaky-graveyard:
-    image: node:22-alpine
-    working_dir: /app
-    volumes:
-      - .:/app
-      - flaky-data:/root/.flaky-graveyard
-    command: sh -c "corepack enable && pnpm install && pnpm start"
-    ports:
-      - "3000:3000"
-    environment:
-      - PORT=3000
-volumes:
-  flaky-data:
+```bash
+pnpm build
+docker compose up -d --build
 ```
 
+This uses [Dockerfile](/Users/yuzhe/projects/flaky-graveyard/Dockerfile) and [docker-compose.yml](/Users/yuzhe/projects/flaky-graveyard/docker-compose.yml) to run the server on port `3000` and persist SQLite data under `./data`.
+
+## Self-Hosting
+
+### Docker
+
+Build the production image after compiling the app:
+
 ```bash
-docker compose up -d
+pnpm build
+docker build -t flaky-graveyard .
 ```
+
+Run it directly:
+
+```bash
+docker run --name flaky-graveyard \
+  -p 3000:3000 \
+  -v "$(pwd)/data:/root/.flaky-graveyard" \
+  --restart unless-stopped \
+  flaky-graveyard
+```
+
+Or use Compose:
+
+```bash
+docker compose up -d --build
+```
+
+### Configuration
+
+| Environment Variable | Default | Description |
+|---|---|---|
+| `PORT` | `3000` | HTTP server port |
+| `DB_PATH` | `~/.flaky-graveyard/data.db` | SQLite database path |
 
 ## GitHub Actions Integration
 
-Add this to your workflow after running tests:
+Use the Marketplace action after your test step has produced JUnit XML:
 
 ```yaml
-- name: Upload test results to Flaky Graveyard
+- name: Publish flaky report
   if: always()
-  run: |
-    curl -s -X POST https://your-flaky-graveyard.example.com/api/runs \
-      -H "Content-Type: application/json" \
-      -d @- <<EOF
-    {
-      "project": "${{ github.repository }}",
-      "branch": "${{ github.ref_name }}",
-      "commitSha": "${{ github.sha }}",
-      "junitXml": $(cat junit-results.xml | jq -Rs .)
-    }
-    EOF
+  uses: bkmsr/flaky-graveyard@v1
+  with:
+    server-url: https://your-flaky-graveyard.example.com
+    junit-glob: '**/test-results/*.xml'
+    token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-Or use the CLI directly in your CI:
+What the action does:
 
-```yaml
-- name: Upload test results
-  if: always()
-  run: |
-    npx flaky-graveyard upload \
-      --project "${{ github.repository }}" \
-      --branch "${{ github.ref_name }}" \
-      --commit "${{ github.sha }}" \
-      --server https://your-flaky-graveyard.example.com \
-      junit-results.xml
-```
+- Finds JUnit XML files matching `junit-glob`
+- Sends them to `POST /api/ingest` as a single logical run
+- Fetches the latest top flaky tests from `/api/flaky`
+- Posts a pull request comment with the report when running in PR context
+
+An example workflow is included at [.github/workflows/flaky-report.yml](/Users/yuzhe/projects/flaky-graveyard/.github/workflows/flaky-report.yml).
 
 ## CLI Usage
 
@@ -113,7 +125,8 @@ flaky-graveyard list --local --project myapp
 ```
 
 Output:
-```
+
+```text
 ──────────────────────────────────────────────────────────────────────
 🪦 Flaky Tests: myapp
 
@@ -134,11 +147,40 @@ flaky-graveyard report --local --project myapp
 
 ## API Reference
 
-### `POST /api/runs`
+### `POST /api/ingest`
 
-Ingest a JUnit XML report.
+Ingest one or more JUnit XML reports as a single run.
 
 **Body:**
+
+```json
+{
+  "project": "myapp",
+  "branch": "main",
+  "commitSha": "abc123",
+  "junitXmlFiles": [
+    "<testsuites>...</testsuites>",
+    "<testsuites>...</testsuites>"
+  ]
+}
+```
+
+**Response:**
+
+```json
+{
+  "runId": 42,
+  "filesProcessed": 2,
+  "stats": { "total": 10, "pass": 8, "fail": 2, "skip": 0 }
+}
+```
+
+### `POST /api/runs`
+
+Backwards-compatible single-report ingest endpoint.
+
+**Body:**
+
 ```json
 {
   "project": "myapp",
@@ -148,19 +190,12 @@ Ingest a JUnit XML report.
 }
 ```
 
-**Response:**
-```json
-{
-  "runId": 42,
-  "stats": { "total": 10, "pass": 8, "fail": 2, "skip": 0 }
-}
-```
-
 ### `GET /api/flaky?project=myapp&threshold=0.1&limit=20`
 
 Returns top flaky tests above the given threshold.
 
 **Response:**
+
 ```json
 [
   {
@@ -182,6 +217,7 @@ Returns a plain-text formatted report.
 ### `GET /dashboard?project=myapp`
 
 Web dashboard showing flaky tests with color-coded scores:
+
 - Red: >30% failure rate
 - Yellow: 10–30% failure rate
 - Green: <10% failure rate
@@ -193,16 +229,10 @@ Auto-refreshes every 30 seconds.
 **Flakiness score** = number of failures in last N runs / N (default window: 30)
 
 **Trend** is computed by comparing the failure rate of the most recent 10 runs vs the previous 10 runs:
+
 - `getting-worse`: last 10 rate > previous 10 rate + 10%
 - `getting-better`: last 10 rate < previous 10 rate - 10%
 - `stable`: otherwise
-
-## Configuration
-
-| Environment Variable | Default | Description |
-|---|---|---|
-| `PORT` | `3000` | HTTP server port |
-| `DB_PATH` | `~/.flaky-graveyard/data.db` | SQLite database path |
 
 ## License
 

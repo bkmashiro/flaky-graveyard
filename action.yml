@@ -1,0 +1,22 @@
+name: Flaky Graveyard
+description: Ingest JUnit XML reports into Flaky Graveyard and comment the top flaky tests on pull requests.
+inputs:
+  server-url:
+    description: Base URL of the Flaky Graveyard server.
+    required: true
+  junit-glob:
+    description: Glob pattern used to discover JUnit XML reports.
+    required: false
+    default: '**/test-results/*.xml'
+  token:
+    description: GitHub token used to post the pull request comment.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Upload JUnit results and comment on the pull request
+      shell: bash
+      run: node "${{ github.action_path }}/scripts/github-action.mjs"
+branding:
+  color: gray-dark
+  icon: activity
