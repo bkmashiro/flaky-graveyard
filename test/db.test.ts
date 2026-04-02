@@ -5,11 +5,14 @@ const { tmpdir } = require('node:os')
 const { join } = require('node:path')
 const Database = require('better-sqlite3')
 const {
+  getExportableTests,
   getDb,
   getProjectStats,
+  getRetryAttempts,
   getTestHistory,
   getTopFlakyTests,
   initDb,
+  insertRetryAttempt,
   insertRun,
   insertTestResult,
 } = require('../src/db.ts')
@@ -121,6 +124,38 @@ test('stores nullable suite, duration, and error fields as null', () => {
   assert.equal(row.error_message, null)
 })
 
+test('stores retry attempts for a failing test result', () => {
+  const db = createDb()
+  const runId = insertRun(db, 'demo-project')
+  const testResultId = insertTestResult(
+    db,
+    runId,
+    'AuthSuite',
+    'logs in',
+    'fail',
+    12,
+    'timeout'
+  )
+
+  insertRetryAttempt(db, testResultId, 1, 'pass', 9)
+  insertRetryAttempt(db, testResultId, 2, 'fail', 11, 'timeout again')
+
+  const attempts = getRetryAttempts(db, testResultId)
+
+  assert.equal(attempts.length, 2)
+  assert.deepEqual(
+    attempts.map((attempt) => ({
+      attemptIndex: attempt.attemptIndex,
+      status: attempt.status,
+    })),
+    [
+      { attemptIndex: 1, status: 'pass' },
+      { attemptIndex: 2, status: 'fail' },
+    ]
+  )
+  assert.equal(attempts[1]?.errorMessage, 'timeout again')
+})
+
 test('returns project stats for a single project', () => {
   const db = createDb()
 
@@ -152,6 +187,38 @@ test('returns only flaky tests above the threshold and respects the limit', () =
   assert.equal(flaky[0]?.failCount, 2)
   assert.equal(flaky[0]?.totalRuns, 2)
   assert.ok(typeof flaky[0]?.lastSeen === 'string')
+})
+
+test('returns exportable tests with latest failure metadata', () => {
+  const db = createDb()
+
+  insertRunWithResult(db, {
+    project: 'alpha',
+    suite: 'AuthSuite',
+    testName: 'login',
+    status: 'fail',
+  })
+  insertRunWithResult(db, {
+    project: 'alpha',
+    suite: 'AuthSuite',
+    testName: 'login',
+    status: 'pass',
+  })
+  const stableRunId = insertRun(db, 'alpha')
+  insertTestResult(db, stableRunId, 'DbSuite', 'connects', 'fail', 5, 'db down')
+  insertTestResult(db, stableRunId, 'DbSuite', 'connects', 'fail', 5, 'db still down')
+
+  const rows = getExportableTests(db, 'alpha')
+
+  assert.equal(rows.length, 2)
+  const login = rows.find((row) => row.testName === 'login')
+  const connects = rows.find((row) => row.testName === 'connects')
+
+  assert.equal(login?.suite, 'AuthSuite')
+  assert.equal(login?.failCount, 1)
+  assert.equal(login?.totalRuns, 2)
+  assert.ok(typeof login?.lastFailureAt === 'string')
+  assert.equal(connects?.lastFailureMessage, 'db still down')
 })
 
 test('creates a database file and reuses the same connection', () => {

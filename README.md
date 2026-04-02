@@ -147,6 +147,25 @@ flaky-graveyard report --project myapp --branch main
 flaky-graveyard report --local --project myapp
 ```
 
+### Retry failed tests in CI
+
+Re-run the failed tests from one or more JUnit reports and store the retry history in the local graveyard database:
+
+```bash
+export FLAKY_GRAVEYARD_RUNNER='pnpm test -- --grep {test}'
+flaky-graveyard --project myapp --retry 3 --junit test-results/*.xml
+```
+
+`FLAKY_GRAVEYARD_RUNNER` (or `--runner`) is a shell command template. `{test}`, `{suite}`, and `{attempt}` are replaced before execution. A zero exit code counts as pass; any non-zero exit code counts as fail.
+
+### Export as JUnit XML
+
+Export the currently flaky tests for a project as JUnit XML:
+
+```bash
+flaky-graveyard --project myapp --export junit > flaky-report.xml
+```
+
 ## API Reference
 
 ### `POST /api/ingest`

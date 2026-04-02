@@ -3,8 +3,10 @@ import { Command } from 'commander'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import chalk from 'chalk'
-import { getDb, insertRun, insertTestResult, getProjectStats } from './db.js'
+import { getDb, getExportableTests, insertRun, insertTestResult, getProjectStats } from './db.js'
 import { parseJUnitXml } from './ingest.js'
+import { buildJUnitExport } from './junit-export.js'
+import { createCommandRetryRunner, formatRetryOutcome, retryFailedTests, type FailedTest } from './retry.js'
 import { getTopFlaky } from './scorer.js'
 
 const packageJson = JSON.parse(
@@ -15,6 +17,121 @@ program
   .name('flaky-graveyard')
   .description('Self-hosted flaky test tracker')
   .version(packageJson.version ?? '0.0.0')
+  .option('--project <name>', 'project name', 'default')
+  .option('--branch <branch>', 'git branch')
+  .option('--commit <sha>', 'commit SHA')
+  .option('--junit <files...>', 'one or more JUnit XML files to ingest')
+  .option('--retry <n>', 're-run failed tests N more times')
+  .option('--runner <command>', 'retry command template (or set FLAKY_GRAVEYARD_RUNNER)')
+  .option('--export <format>', 'export report format')
+  .action(async (opts: {
+    project: string
+    branch?: string
+    commit?: string
+    junit?: string[]
+    retry?: string
+    runner?: string
+    export?: string
+  }) => {
+    try {
+      if (opts.export) {
+        if (opts.export !== 'junit') {
+          console.error(chalk.red(`Error: unsupported export format: ${opts.export}`))
+          process.exit(1)
+        }
+
+        const db = getDb()
+        console.log(buildJUnitExport(getExportableTests(db, opts.project), opts.project))
+        return
+      }
+
+      if (!opts.junit || opts.junit.length === 0) {
+        program.help({ error: true })
+      }
+
+      const junitFiles = opts.junit ?? []
+
+      const retryCount =
+        opts.retry === undefined ? 0 : parseInt(opts.retry, 10)
+
+      if (!Number.isInteger(retryCount) || retryCount < 0) {
+        console.error(chalk.red('Error: --retry must be a non-negative integer'))
+        process.exit(1)
+      }
+
+      const runnerCommand = opts.runner ?? process.env.FLAKY_GRAVEYARD_RUNNER
+      if (retryCount > 0 && !runnerCommand) {
+        console.error(
+          chalk.red('Error: --retry requires --runner or FLAKY_GRAVEYARD_RUNNER')
+        )
+        process.exit(1)
+      }
+
+      const xmlPayloads = junitFiles.map((file) => readFileSync(file, 'utf-8'))
+      const results = xmlPayloads.flatMap((xml) => parseJUnitXml(xml))
+      const db = getDb()
+      const runId = insertRun(db, opts.project, opts.branch, opts.commit)
+
+      let pass = 0, fail = 0, skip = 0
+      const failedTests: FailedTest[] = []
+
+      for (const result of results) {
+        const testResultId = insertTestResult(
+          db,
+          runId,
+          result.suite,
+          result.testName,
+          result.status,
+          result.durationMs,
+          result.errorMessage
+        )
+
+        if (result.status === 'pass') pass += 1
+        else if (result.status === 'fail') {
+          fail += 1
+          failedTests.push({
+            testResultId,
+            suite: result.suite,
+            testName: result.testName,
+            errorMessage: result.errorMessage,
+          })
+        } else {
+          skip += 1
+        }
+      }
+
+      console.log(chalk.green(`✓ Uploaded ${results.length} tests (run #${runId})`))
+      console.log(`  pass: ${pass}, fail: ${fail}, skip: ${skip}`)
+
+      if (retryCount === 0 || failedTests.length === 0) {
+        return
+      }
+
+      const retryOutcomes = await retryFailedTests(
+        db,
+        failedTests,
+        retryCount,
+        createCommandRetryRunner(runnerCommand as string)
+      )
+
+      console.log()
+      console.log(`Retrying ${failedTests.length} failed tests (${retryCount}x each)...`)
+
+      for (const outcome of retryOutcomes) {
+        console.log(formatRetryOutcome(outcome))
+      }
+
+      const flakyCount = retryOutcomes.filter((outcome) => outcome.classification === 'flaky').length
+      const stableFailureCount = retryOutcomes.length - flakyCount
+
+      console.log()
+      console.log(`Flaky: ${flakyCount} test${flakyCount === 1 ? '' : 's'}`)
+      console.log(`Stable failures: ${stableFailureCount} test${stableFailureCount === 1 ? '' : 's'}`)
+    } catch (err) {
+      console.error(chalk.red(`Error: ${String(err)}`))
+      process.exit(1)
+    }
+  })
 
 // Upload command
 program
