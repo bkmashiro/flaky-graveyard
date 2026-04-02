@@ -1,3 +1,5 @@
+[![npm](https://img.shields.io/npm/v/flaky-graveyard)](https://www.npmjs.com/package/flaky-graveyard) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 # 🪦 Flaky Graveyard
 
 A self-hosted flaky test tracker that ingests JUnit XML reports, scores test flakiness, and provides a web dashboard, CLI, GitHub Action, and Docker deployment path for unstable test visibility.
