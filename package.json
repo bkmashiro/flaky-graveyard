@@ -1,34 +1,33 @@
 {
   "name": "flaky-graveyard",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "start": "tsx src/server.ts",
-    "cli": "tsx src/cli.ts",
-    "build": "tsc",
-    "dev": "tsx watch src/server.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "description": "Track and bury your flaky tests - CI dashboard for flakiness analysis",
+  "main": "dist/server.js",
   "bin": {
-    "flaky-graveyard": "./src/cli.ts"
+    "flaky-graveyard": "./dist/cli.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "files": ["dist/", "README.md"],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "start": "node dist/server.js"
+  },
+  "keywords": ["testing", "flaky-tests", "ci", "dashboard", "devtools"],
+  "author": "bkmsr",
+  "license": "MIT",
   "packageManager": "pnpm@10.30.3",
   "dependencies": {
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^25.5.0",
     "better-sqlite3": "^12.8.0",
     "chalk": "^5.6.2",
     "commander": "^14.0.3",
     "express": "^5.2.1",
-    "fast-xml-parser": "^5.5.9",
-    "tsx": "^4.21.0",
-    "typescript": "^6.0.2"
+    "fast-xml-parser": "^5.5.9"
   },
   "devDependencies": {
-    "@types/express": "^5.0.6"
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
   }
 }

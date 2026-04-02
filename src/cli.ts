@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env node
 import { Command } from 'commander'
 import { readFileSync } from 'fs'
 import chalk from 'chalk'
@@ -161,11 +161,11 @@ function trendDisplay(trend: string): string {
 
 function printFlakyTable(flaky: FlakyEntry[], project: string, threshold: number): void {
   console.log(chalk.gray('─'.repeat(70)))
-  console.log(chalk.bold(`🪦 Flaky Tests: ${project}`))
+  console.log(chalk.bold(`🪦 Flaky Tests: ${project} (threshold: ${threshold})`))
   console.log()
 
   if (flaky.length === 0) {
-    console.log(chalk.green('  No flaky tests found above threshold.'))
+    console.log(chalk.green(`  No flaky tests found above threshold (${threshold}).`))
     console.log(chalk.gray('─'.repeat(70)))
     return
   }
